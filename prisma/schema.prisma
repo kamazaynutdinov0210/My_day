@@ -1,0 +1,694 @@
+// My Day — Prisma schema
+// SOURCE OF TRUTH for all persisted entities.
+// Owned by: AI #1 (Architect). Do not fork or duplicate models elsewhere.
+// Any breaking change must follow the process in docs/ARCHITECTURE.md §"Changing the contract".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  WAITING
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProjectMemberRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum EventStatus {
+  CONFIRMED
+  TENTATIVE
+  CANCELLED
+}
+
+enum EventCategory {
+  MEETING
+  PERSONAL
+  FOCUS
+  TRAVEL
+  DEADLINE
+  OTHER
+}
+
+enum RecurrenceFrequency {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+  CUSTOM
+}
+
+enum ReminderStatus {
+  SCHEDULED
+  SENT
+  DISMISSED
+  FAILED
+  CANCELLED
+}
+
+enum ReminderChannel {
+  BROWSER
+  EMAIL
+  TELEGRAM
+}
+
+enum NotificationType {
+  TASK
+  PROJECT
+  EVENT
+  REMINDER
+  MESSAGE
+  INTEGRATION
+  SYSTEM
+  AI
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum NoteType {
+  NOTE
+  IDEA
+  INSTRUCTION
+  PLAN
+  DECISION
+  LINK
+}
+
+enum IntegrationProviderType {
+  GOOGLE
+  MICROSOFT
+  TELEGRAM
+  SLACK
+  DISCORD
+  GITHUB
+  NOTION
+  GOOGLE_DRIVE
+  AI_OPENAI
+  AI_ANTHROPIC
+  AI_GOOGLE
+  AI_OPENAI_COMPATIBLE
+  AI_LOCAL
+}
+
+enum IntegrationStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  ERROR
+  EXPIRED
+}
+
+enum MessageSource {
+  TELEGRAM
+  SLACK
+  DISCORD
+  INTERNAL
+}
+
+enum EmailFolder {
+  INBOX
+  SENT
+  ARCHIVE
+  TRASH
+}
+
+enum TimeEntrySource {
+  MANUAL
+  TIMER
+  CALENDAR_SYNC
+}
+
+enum AnalyticsPeriod {
+  DAY
+  WEEK
+  MONTH
+  CUSTOM
+}
+
+enum ActivityAction {
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_COMPLETED
+  TASK_DELETED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_COMPLETED
+  PROJECT_DELETED
+  EVENT_CREATED
+  EVENT_UPDATED
+  EVENT_MOVED
+  EVENT_DELETED
+  REMINDER_CREATED
+  REMINDER_TRIGGERED
+  REMINDER_CANCELLED
+  NOTE_CREATED
+  NOTE_UPDATED
+  NOTE_DELETED
+  INTEGRATION_CONNECTED
+  INTEGRATION_DISCONNECTED
+  AI_ACTION_EXECUTED
+}
+
+enum EntityType {
+  TASK
+  PROJECT
+  EVENT
+  NOTE
+  REMINDER
+  NOTIFICATION
+  INTEGRATION
+  MESSAGE
+  EMAIL_MESSAGE
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CORE: USER / SESSION
+// ─────────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  name           String
+  avatarUrl      String?
+  timezone       String   @default("Asia/Tashkent")
+  locale         String   @default("en")
+  themePreference String  @default("dark") // "dark" | "light" | "system"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  sessions             Session[]
+  tasks                Task[]
+  projects             Project[]
+  projectMemberships   ProjectMember[]
+  events               CalendarEvent[]
+  notes                Note[]
+  reminders            Reminder[]
+  notifications        Notification[]
+  tags                 Tag[]
+  activityLogs         ActivityLog[]
+  integrationAccounts  IntegrationAccount[]
+  messages             Message[]
+  emailMessages        EmailMessage[]
+  dailyBriefings       DailyBriefing[]
+  timeEntries          TimeEntry[]
+  analyticsSnapshots   AnalyticsSnapshot[]
+  taskComments         TaskComment[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String   @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  revokedAt    DateTime?
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// TASKS
+// ─────────────────────────────────────────────────────────────────────────
+
+model Task {
+  id                String       @id @default(cuid())
+  userId            String
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title             String
+  description       String?
+  status            TaskStatus   @default(TODO)
+  priority          TaskPriority @default(MEDIUM)
+
+  dueDate           DateTime?
+  startDate         DateTime?
+  estimatedDuration Int?         // minutes
+  actualDuration    Int?         // minutes, derived/adjusted from TimeEntry
+
+  projectId         String?
+  project           Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  parentTaskId      String?
+  parentTask        Task?        @relation("TaskSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks          Task[]       @relation("TaskSubtasks")
+
+  recurrenceFreq    RecurrenceFrequency @default(NONE)
+  recurrenceRule    String?      // RFC 5545 RRULE string when CUSTOM/complex
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  completedAt       DateTime?
+
+  tags              TaskTag[]
+  comments          TaskComment[]
+  reminders         Reminder[]
+  timeEntries       TimeEntry[]
+
+  @@index([userId, status])
+  @@index([projectId])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+  @@map("task_comments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PROJECTS
+// ─────────────────────────────────────────────────────────────────────────
+
+model Project {
+  id          String        @id @default(cuid())
+  ownerId     String
+  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  status      ProjectStatus @default(PLANNING)
+  priority    TaskPriority  @default(MEDIUM)
+  deadline    DateTime?
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tasks       Task[]
+  events      CalendarEvent[]
+  notes       Note[]
+  members     ProjectMember[]
+  tags        ProjectTag[]
+
+  // NOTE: progress % is NEVER stored as a static field — it is always
+  // computed at read-time from related Task counts (see docs/DATABASE.md §Project).
+
+  @@index([ownerId, status])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String            @id @default(cuid())
+  projectId String
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      ProjectMemberRole @default(EDITOR)
+  joinedAt  DateTime          @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// CALENDAR
+// ─────────────────────────────────────────────────────────────────────────
+
+model CalendarEvent {
+  id              String              @id @default(cuid())
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title           String
+  description     String?
+  startAt         DateTime
+  endAt           DateTime
+  timezone        String              @default("Asia/Tashkent")
+  location        String?
+  category        EventCategory       @default(OTHER)
+  priority        TaskPriority        @default(MEDIUM)
+  status          EventStatus         @default(CONFIRMED)
+
+  recurrenceFreq  RecurrenceFrequency @default(NONE)
+  recurrenceRule  String?
+
+  projectId       String?
+  project         Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  reminders       Reminder[]
+
+  @@index([userId, startAt])
+  @@index([projectId])
+  @@map("calendar_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// NOTES
+// ─────────────────────────────────────────────────────────────────────────
+
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title     String
+  content   String
+  type      NoteType @default(NOTE)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  taskId    String?
+  eventId   String?  // no FK-enforced relation for CalendarEvent to keep model additive; validated at service layer
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Reserved for future semantic search (see docs/AI_CONTRACT.md §Knowledge Search):
+  // embedding vector storage will be added via a separate NoteEmbedding model
+  // once pgvector (or equivalent) is approved as an architecture change.
+
+  @@index([userId])
+  @@index([projectId])
+  @@map("notes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// REMINDERS / NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────
+
+model Reminder {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title        String
+  remindAt     DateTime
+  channel      ReminderChannel @default(BROWSER)
+  status       ReminderStatus  @default(SCHEDULED)
+
+  taskId       String?
+  task         Task?           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  eventId      String?
+  event        CalendarEvent?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // BullMQ job id backing this reminder, so the worker can locate/cancel it.
+  jobId        String?
+
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  sentAt       DateTime?
+
+  @@index([userId, status, remindAt])
+  @@map("reminders")
+}
+
+model Notification {
+  id         String               @id @default(cuid())
+  userId     String
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type       NotificationType
+  title      String
+  message    String
+  priority   NotificationPriority @default(NORMAL)
+  read       Boolean              @default(false)
+
+  entityType EntityType?
+  entityId   String?
+
+  createdAt  DateTime             @default(now())
+  expiresAt  DateTime?
+  readAt     DateTime?
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// TAGS
+// ─────────────────────────────────────────────────────────────────────────
+
+model Tag {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String?
+  createdAt DateTime     @default(now())
+
+  taskTags    TaskTag[]
+  projectTags ProjectTag[]
+
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+model TaskTag {
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tagId  String
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+  @@map("task_tags")
+}
+
+model ProjectTag {
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, tagId])
+  @@map("project_tags")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ACTIVITY LOG / AUDIT
+// ─────────────────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  action     ActivityAction
+  entityType EntityType
+  entityId   String
+  metadata   Json?
+
+  createdAt  DateTime       @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// INTEGRATIONS
+// ─────────────────────────────────────────────────────────────────────────
+
+// Catalog of providers available in this deployment (not per-user).
+model Integration {
+  id           String                  @id @default(cuid())
+  provider     IntegrationProviderType @unique
+  displayName  String
+  enabled      Boolean                 @default(true)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  accounts     IntegrationAccount[]
+
+  @@map("integrations")
+}
+
+// Per-user connection to a provider (OAuth tokens etc. are encrypted at rest;
+// see docs/INTEGRATIONS.md §Security).
+model IntegrationAccount {
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  integrationId   String
+  integration     Integration       @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  status          IntegrationStatus @default(DISCONNECTED)
+  externalAccountId String?
+  accessTokenEnc  String?           // encrypted, never returned via API
+  refreshTokenEnc String?           // encrypted, never returned via API
+  scope           String?
+  expiresAt       DateTime?
+  lastSyncedAt    DateTime?
+  lastError       String?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([userId, integrationId])
+  @@map("integration_accounts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MESSAGES / EMAIL (from connected chat & email integrations)
+// ─────────────────────────────────────────────────────────────────────────
+
+model Message {
+  id         String        @id @default(cuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  source     MessageSource
+  externalId String?       // id in the source system, for idempotent sync
+  sender     String
+  body       String
+  read       Boolean       @default(false)
+  receivedAt DateTime
+
+  createdAt  DateTime      @default(now())
+
+  @@unique([source, externalId])
+  @@index([userId, read])
+  @@map("messages")
+}
+
+model EmailMessage {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  externalId String      // id in the source mailbox, for idempotent sync
+  provider   IntegrationProviderType
+  folder     EmailFolder @default(INBOX)
+  from       String
+  to         String[]
+  subject    String
+  bodyPreview String?
+  read       Boolean     @default(false)
+  receivedAt DateTime
+
+  createdAt  DateTime    @default(now())
+
+  @@unique([provider, externalId])
+  @@index([userId, folder, read])
+  @@map("email_messages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// DAILY BRIEFING
+// ─────────────────────────────────────────────────────────────────────────
+
+model DailyBriefing {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date        DateTime // truncated to day, in user's timezone at generation time
+  summary     String   // rendered text (template- or AI-generated per docs/AI_CONTRACT.md)
+  stats       Json     // structured snapshot: meetingsCount, activeTasks, overdueTasks, etc.
+  generatedBy String   @default("template") // "template" | "ai"
+
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, date])
+  @@map("daily_briefings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// TIME TRACKING
+// ─────────────────────────────────────────────────────────────────────────
+
+model TimeEntry {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String?
+  task      Task?           @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  startedAt DateTime
+  endedAt   DateTime?
+  durationMinutes Int?      // denormalized once endedAt is set, for fast aggregation
+  source    TimeEntrySource @default(MANUAL)
+  note      String?
+
+  createdAt DateTime        @default(now())
+
+  @@index([userId, startedAt])
+  @@index([taskId])
+  @@map("time_entries")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ANALYTICS
+// ─────────────────────────────────────────────────────────────────────────
+
+// Precomputed aggregation snapshots produced by the analytics worker so the
+// Analytics API can serve historical periods without recomputation.
+// Never used as a substitute for real-time "Today" figures — those are
+// always computed live. See docs/DATABASE.md §Analytics.
+model AnalyticsSnapshot {
+  id             String          @id @default(cuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  period         AnalyticsPeriod
+  periodStart    DateTime
+  periodEnd      DateTime
+
+  tasksCompleted Int
+  tasksOverdue   Int
+  completionRate Float
+  scheduledMinutes Int
+  actualMinutes  Int
+  meetingMinutes Int
+  focusMinutes   Int
+
+  computedAt     DateTime        @default(now())
+
+  @@unique([userId, period, periodStart])
+  @@map("analytics_snapshots")
+}
