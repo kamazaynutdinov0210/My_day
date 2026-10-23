@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark is the default. Channels are "R G B" so Tailwind can apply opacity. */
+:root, [data-theme="dark"] {
+  --bg: 11 20 24; --surface: 17 29 34; --raised: 25 41 47; --line: 39 58 65;
+  --fg: 232 238 236; --muted: 138 160 163;
+  --accent: 226 182 107; --accent-fg: 27 20 6; --good: 121 196 152; --bad: 232 119 108;
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  --bg: 244 247 246; --surface: 255 255 255; --raised: 236 241 240; --line: 214 224 223;
+  --fg: 16 32 36; --muted: 93 113 116;
+  --accent: 158 104 18; --accent-fg: 255 255 255; --good: 34 122 76; --bad: 190 62 50;
+  color-scheme: light;
+}
+body { @apply bg-bg font-sans text-fg antialiased; font-feature-settings: "tnum"; }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
