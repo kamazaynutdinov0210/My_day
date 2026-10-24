@@ -135,3 +135,24 @@ queue, itself backed by its own persistence/AOF configuration in
 `docker-compose.yml`), a browser reload, an `apps/api` restart, or a
 `workers/*` restart never loses task/project/event/reminder data or
 in-flight background jobs — the central requirement in §1 of the brief.
+
+## Full-text search (Notes)
+
+Notes use PostgreSQL full-text search through a stored generated column
+`search_vector` plus a GIN index. Prisma cannot express generated columns,
+so the column is declared in `schema.prisma` as `Unsupported("tsvector")`
+and its real definition lives in `prisma/sql/notes_fts.sql`.
+
+Workflow for the first migration:
+
+1. `pnpm prisma migrate dev --create-only --name init --schema prisma/schema.prisma`
+2. Replace the generated `search_vector` column and index statements in the
+   new `migration.sql` with the contents of `prisma/sql/notes_fts.sql`.
+3. `pnpm db:migrate` to apply, then confirm a second `migrate dev` reports
+   no drift.
+
+Queries go through `$queryRaw` with parameterized input and
+`websearch_to_tsquery('simple', $1)`. The `simple` configuration is used
+because notes mix Russian, English and Uzbek. Global search over other
+entities (tasks, projects, events, messages, emails) starts with indexed
+`ILIKE` and can move to the same pattern later.

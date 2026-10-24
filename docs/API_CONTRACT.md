@@ -64,7 +64,34 @@ POST   /api/auth/register        { AuthRegisterInput }        → AuthSessionRes
 POST   /api/auth/login           { AuthLoginInput }            → AuthSessionResult
 POST   /api/auth/logout          –                              → { success: true, data: null }
 GET    /api/auth/me              –                              → User
+GET    /api/auth/csrf            –                              → { csrfToken: string }
 ```
+
+### 4.1 Passwords
+
+Hashed with **argon2id** (library: `argon2`). Plaintext passwords are never
+logged, stored, or returned. Minimum length 10 characters, validated at the
+API boundary.
+
+### 4.2 Session cookie
+
+| Property | Value |
+|---|---|
+| Name | `SESSION_COOKIE_NAME` (default `myday_session`) |
+| Content | Opaque random token; only its hash is stored in `Session.tokenHash` |
+| Flags | `HttpOnly`, `Secure` (non-dev), `SameSite=Lax`, `Path=/` |
+| Lifetime | `SESSION_TTL_SECONDS`; expired or `revokedAt` sessions are rejected |
+| Logout | Sets `Session.revokedAt` and clears the cookie |
+
+### 4.3 CSRF protection
+
+Double-submit pattern. `GET /api/auth/csrf` returns a token and sets a
+readable `myday_csrf` cookie signed with `CSRF_SECRET`. Every
+state-changing request (`POST`, `PATCH`, `PUT`, `DELETE`) must send the
+token in the `X-CSRF-Token` header. A missing or mismatched token returns
+`403` with `error.code = "FORBIDDEN"`. `GET` requests and inbound provider
+webhooks (verified by signature instead, see `docs/INTEGRATIONS.md`) are
+exempt.
 
 ## 5. Users
 
