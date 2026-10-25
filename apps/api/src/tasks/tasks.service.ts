@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { DEFAULT_PAGE_SIZE } from '../common/api-response';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityService } from '../activity/activity.service';
 import type { CreateTaskDto } from './dto/create-task.dto';
@@ -8,7 +9,7 @@ import type { UpdateTaskDto } from './dto/update-task.dto';
 export class TasksService {
   constructor(private readonly prisma: PrismaService, private readonly activity: ActivityService) {}
 
-  async list(userId: string, page = 1, pageSize = 50) {
+  async list(userId: string, page = 1, pageSize = DEFAULT_PAGE_SIZE) {
     const skip = (page - 1) * pageSize;
     const [items, total] = await this.prisma.$transaction([
       this.prisma.task.findMany({ where: { userId }, orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }], skip, take: pageSize }),

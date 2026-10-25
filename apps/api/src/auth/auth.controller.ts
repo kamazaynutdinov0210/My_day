@@ -30,7 +30,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(SessionAuthGuard)
-  me(@CurrentUser() user: AuthenticatedRequest['user']) {
-    return { success: true, data: user };
+  async me(@CurrentUser() user: AuthenticatedRequest['user']) {
+    return { success: true, data: await this.authService.getPublicUser(user.id) };
   }
 }

@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { paginated, parsePaging } from '../common/api-response';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedRequest } from '../common/decorators/current-user.decorator';
 import { CsrfGuard } from '../common/guards/csrf.guard';
@@ -13,8 +14,14 @@ export class ProjectsController {
   constructor(private readonly projects: ProjectsService) {}
 
   @Get()
-  async list(@CurrentUser() user: AuthenticatedRequest['user'], @Query('page') page = '1', @Query('pageSize') pageSize = '50') {
-    return { success: true, data: await this.projects.list(user.id, Math.max(1, Number(page)), Math.min(100, Math.max(1, Number(pageSize)))) };
+  async list(
+    @CurrentUser() user: AuthenticatedRequest['user'],
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    const paging = parsePaging(page, pageSize);
+    const result = await this.projects.list(user.id, paging.page, paging.pageSize);
+    return paginated(result.items, result.page, result.pageSize, result.total);
   }
 
   @Get(':id')

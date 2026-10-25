@@ -64,7 +64,6 @@ POST   /api/auth/register        { AuthRegisterInput }        → AuthSessionRes
 POST   /api/auth/login           { AuthLoginInput }            → AuthSessionResult
 POST   /api/auth/logout          –                              → { success: true, data: null }
 GET    /api/auth/me              –                              → User
-GET    /api/auth/csrf            –                              → { csrfToken: string }
 ```
 
 ### 4.1 Passwords
@@ -77,21 +76,25 @@ API boundary.
 
 | Property | Value |
 |---|---|
-| Name | `SESSION_COOKIE_NAME` (default `myday_session`) |
+| Name | `my_day_session` |
 | Content | Opaque random token; only its hash is stored in `Session.tokenHash` |
-| Flags | `HttpOnly`, `Secure` (non-dev), `SameSite=Lax`, `Path=/` |
-| Lifetime | `SESSION_TTL_SECONDS`; expired or `revokedAt` sessions are rejected |
-| Logout | Sets `Session.revokedAt` and clears the cookie |
+| Flags | `HttpOnly`, `Secure` (production), `SameSite=Strict`, `Path=/` |
+| Lifetime | 30 days; expired or `revokedAt` sessions are rejected |
+| Logout | Sets `Session.revokedAt` and clears the cookies |
+
+The web app and the API are served from one origin (Next.js proxies `/api`),
+which is why `SameSite=Strict` works.
 
 ### 4.3 CSRF protection
 
-Double-submit pattern. `GET /api/auth/csrf` returns a token and sets a
-readable `myday_csrf` cookie signed with `CSRF_SECRET`. Every
-state-changing request (`POST`, `PATCH`, `PUT`, `DELETE`) must send the
-token in the `X-CSRF-Token` header. A missing or mismatched token returns
+Double-submit pattern with a stateless token. On register and login the API
+sets a **readable** (not `HttpOnly`) cookie `my_day_csrf` whose value is an
+HMAC of the session token keyed by `CSRF_SECRET`. The client must copy that
+value into the `X-CSRF-Token` header on every `POST`, `PATCH`, `PUT` and
+`DELETE` except register and login. A missing or mismatched token returns
 `403` with `error.code = "FORBIDDEN"`. `GET` requests and inbound provider
 webhooks (verified by signature instead, see `docs/INTEGRATIONS.md`) are
-exempt.
+exempt. There is no separate token endpoint.
 
 ## 5. Users
 

@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { paginated } from '../common/api-response';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedRequest } from '../common/decorators/current-user.decorator';
 import { CsrfGuard } from '../common/guards/csrf.guard';
@@ -13,7 +14,8 @@ export class NotificationsController {
 
   @Get()
   async list(@CurrentUser() user: AuthenticatedRequest['user'], @Query() query: ListNotificationsQuery) {
-    return { success: true, data: await this.notifications.list(user.id, query) };
+    const result = await this.notifications.list(user.id, query);
+    return paginated(result.items, result.page, result.pageSize, result.total);
   }
 
   @Patch(':id/read')

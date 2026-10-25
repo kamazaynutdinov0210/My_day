@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { DEFAULT_PAGE_SIZE } from '../common/api-response';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityService } from '../activity/activity.service';
 import type { CreateNoteDto } from './dto/create-note.dto';
@@ -8,7 +9,7 @@ import type { UpdateNoteDto } from './dto/update-note.dto';
 export class NotesService {
   constructor(private readonly prisma: PrismaService, private readonly activity: ActivityService) {}
 
-  async list(userId: string, search?: string, page = 1, pageSize = 50) {
+  async list(userId: string, search?: string, page = 1, pageSize = DEFAULT_PAGE_SIZE) {
     const skip = (page - 1) * pageSize;
     const where = {
       userId,

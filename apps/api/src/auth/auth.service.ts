@@ -1,5 +1,6 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PUBLIC_USER_SELECT } from '../users/public-user';
 import * as argon2 from 'argon2';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Response } from 'express';
@@ -28,11 +29,11 @@ export class AuthService {
         name: dto.name.trim(),
         timezone: dto.timezone?.trim() || DEFAULT_TIMEZONE,
       },
-      select: { id: true, email: true, name: true, timezone: true, createdAt: true, updatedAt: true },
+      select: PUBLIC_USER_SELECT,
     });
 
     await this.issueSession(user.id, response);
-    return { success: true, data: user };
+    return { success: true, data: { user } };
   }
 
   async login(dto: LoginDto, response: Response) {
@@ -43,18 +44,25 @@ export class AuthService {
     }
 
     await this.issueSession(user.id, response);
-    return {
-      success: true,
-      data: { id: user.id, email: user.email, name: user.name, timezone: user.timezone },
-    };
+    const { passwordHash: _passwordHash, ...publicUser } = user;
+    return { success: true, data: { user: publicUser } };
   }
 
   async logout(sessionToken: string | undefined, response: Response) {
     if (sessionToken) {
-      await this.prisma.session.deleteMany({ where: { tokenHash: this.hashToken(sessionToken) } });
+      await this.prisma.session.updateMany({
+        where: { tokenHash: this.hashToken(sessionToken), revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     }
     this.clearCookies(response);
-    return { success: true, data: { loggedOut: true } };
+    return { success: true, data: null };
+  }
+
+  async getPublicUser(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: PUBLIC_USER_SELECT });
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 
   async validateSession(sessionToken: string) {

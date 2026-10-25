@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { DEFAULT_PAGE_SIZE } from '../common/api-response';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityService } from '../activity/activity.service';
 import type { CreateProjectDto } from './dto/create-project.dto';
@@ -8,7 +9,7 @@ import type { UpdateProjectDto } from './dto/update-project.dto';
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService, private readonly activity: ActivityService) {}
 
-  async list(userId: string, page = 1, pageSize = 50) {
+  async list(userId: string, page = 1, pageSize = DEFAULT_PAGE_SIZE) {
     const skip = (page - 1) * pageSize;
     const where = { members: { some: { userId } } };
     const [projects, total] = await this.prisma.$transaction([

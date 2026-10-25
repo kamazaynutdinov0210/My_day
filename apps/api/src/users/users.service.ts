@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { PUBLIC_USER_SELECT } from './public-user';
 import { PrismaService } from '../prisma/prisma.service';
 import type { UpdateUserDto } from './dto/update-user.dto';
 
@@ -9,7 +10,7 @@ export class UsersService {
   async getById(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, name: true, timezone: true, createdAt: true, updatedAt: true },
+      select: PUBLIC_USER_SELECT,
     });
     if (!user) throw new NotFoundException('User not found');
     return user;
@@ -22,7 +23,7 @@ export class UsersService {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
         ...(dto.timezone !== undefined ? { timezone: dto.timezone.trim() } : {}),
       },
-      select: { id: true, email: true, name: true, timezone: true, createdAt: true, updatedAt: true },
+      select: PUBLIC_USER_SELECT,
     });
   }
 }
