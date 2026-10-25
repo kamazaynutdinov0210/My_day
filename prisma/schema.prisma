@@ -408,8 +408,6 @@ model Note {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Generated column, see prisma/sql/notes_fts.sql and docs/DATABASE.md
-  searchVector Unsupported("tsvector")? @map("search_vector")
 
   // Reserved for future semantic search (see docs/AI_CONTRACT.md §Knowledge Search):
   // embedding vector storage will be added via a separate NoteEmbedding model
