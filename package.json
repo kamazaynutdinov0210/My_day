@@ -20,9 +20,12 @@
     "docker:down": "docker compose -f docker-compose.yml down"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "typescript": "^5.5.0",
     "prisma": "^5.18.0",
-    "tsx": "^4.16.0"
+    "tsx": "^4.16.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0"
   }
 }

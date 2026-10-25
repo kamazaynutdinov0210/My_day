@@ -1,4 +1,4 @@
-# Database
+﻿# Database
 
 Status: **Phase 1 baseline**. The executable source of truth is
 `prisma/schema.prisma`; this document explains and indexes it. If the two
@@ -136,23 +136,40 @@ queue, itself backed by its own persistence/AOF configuration in
 `workers/*` restart never loses task/project/event/reminder data or
 in-flight background jobs — the central requirement in §1 of the brief.
 
-## Full-text search (Notes)
+## 9. Full-text search (Notes)
 
-Notes use PostgreSQL full-text search through a stored generated column
-`search_vector` plus a GIN index. Prisma cannot express generated columns,
-so the column is declared in `schema.prisma` as `Unsupported("tsvector")`
-and its real definition lives in `prisma/sql/notes_fts.sql`.
+Notes use PostgreSQL full-text search through a GIN index on an expression,
+created in raw SQL (`prisma/sql/notes_fts.sql`) and appended to the init
+migration. The resulting index is `notes_fts_idx`.
 
-Workflow for the first migration:
+There is deliberately **no** `tsvector` column and nothing in
+`schema.prisma`. Prisma cannot model generated columns or Gin indexes on
+`Unsupported` fields, and declaring them makes `prisma migrate dev` report
+permanent drift (and propose dropping the index). Prisma ignores expression
+indexes, so this setup stays drift-free.
 
-1. `pnpm prisma migrate dev --create-only --name init --schema prisma/schema.prisma`
-2. Replace the generated `search_vector` column and index statements in the
-   new `migration.sql` with the contents of `prisma/sql/notes_fts.sql`.
-3. `pnpm db:migrate` to apply, then confirm a second `migrate dev` reports
-   no drift.
+Creating the init migration on a fresh database:
 
-Queries go through `$queryRaw` with parameterized input and
-`websearch_to_tsquery('simple', $1)`. The `simple` configuration is used
-because notes mix Russian, English and Uzbek. Global search over other
-entities (tasks, projects, events, messages, emails) starts with indexed
-`ILIKE` and can move to the same pattern later.
+1. `pnpm exec prisma migrate dev --create-only --name init --schema prisma/schema.prisma`
+2. Append the contents of `prisma/sql/notes_fts.sql` to the new
+   `migration.sql`.
+3. `pnpm exec prisma migrate dev --schema prisma/schema.prisma` to apply it,
+   then run the same command again and confirm it reports no pending
+   changes.
+
+**Query rule:** the `WHERE` clause must repeat the index expression exactly,
+or Postgres will not use the index.
+
+~~~sql
+SELECT id FROM notes
+WHERE "userId" = $1
+  AND (
+    setweight(to_tsvector('simple', coalesce("title", '')), 'A') ||
+    setweight(to_tsvector('simple', coalesce("content", '')), 'B')
+  ) @@ websearch_to_tsquery('simple', $2);
+~~~
+
+Run it through `$queryRaw` with parameters, never string concatenation.
+The `simple` configuration is used because notes mix Russian, English and
+Uzbek. Global search over other entities (tasks, projects, events, messages,
+emails) starts with indexed `ILIKE` and can move to the same pattern later.
