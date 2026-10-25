@@ -27,19 +27,17 @@ export class ProjectsService {
   async create(userId: string, dto: CreateProjectDto) {
     const project = await this.prisma.project.create({
       data: {
+        ownerId: userId,
         name: dto.name.trim(),
         description: dto.description,
         status: dto.status ?? 'PLANNING',
         priority: dto.priority ?? 'MEDIUM',
         deadline: dto.deadline ? new Date(dto.deadline) : null,
+        members: { create: { userId, role: 'OWNER' } },
       },
     });
 
-    await this.prisma.projectMember.create({
-      data: { projectId: project.id, userId, role: 'OWNER' },
-    });
-
-    await this.activity.create({ userId, action: 'Project created', entityType: 'Project', entityId: project.id });
+    await this.activity.create({ userId, action: 'PROJECT_CREATED', entityType: 'PROJECT', entityId: project.id });
     return this.withProgress(project.id, project);
   }
 
@@ -56,14 +54,14 @@ export class ProjectsService {
       },
     });
 
-    await this.activity.create({ userId, action: 'Project updated', entityType: 'Project', entityId: id });
+    await this.activity.create({ userId, action: 'PROJECT_UPDATED', entityType: 'PROJECT', entityId: id });
     return this.withProgress(project.id, project);
   }
 
   async remove(userId: string, id: string) {
     await this.accessibleProject(userId, id);
     await this.prisma.project.delete({ where: { id } });
-    await this.activity.create({ userId, action: 'Project deleted', entityType: 'Project', entityId: id });
+    await this.activity.create({ userId, action: 'PROJECT_DELETED', entityType: 'PROJECT', entityId: id });
     return { deleted: true };
   }
 

@@ -41,7 +41,7 @@ export class NotesService {
         eventId: dto.eventId,
       },
     });
-    await this.activity.create({ userId, action: 'Note created', entityType: 'Note', entityId: note.id });
+    await this.activity.create({ userId, action: 'NOTE_CREATED', entityType: 'NOTE', entityId: note.id });
     return note;
   }
 
@@ -58,14 +58,14 @@ export class NotesService {
         ...(dto.eventId !== undefined ? { eventId: dto.eventId } : {}),
       },
     });
-    await this.activity.create({ userId, action: 'Note updated', entityType: 'Note', entityId: id });
+    await this.activity.create({ userId, action: 'NOTE_UPDATED', entityType: 'NOTE', entityId: id });
     return note;
   }
 
   async remove(userId: string, id: string) {
     await this.get(userId, id);
     await this.prisma.note.delete({ where: { id } });
-    await this.activity.create({ userId, action: 'Note deleted', entityType: 'Note', entityId: id });
+    await this.activity.create({ userId, action: 'NOTE_DELETED', entityType: 'NOTE', entityId: id });
     return { deleted: true };
   }
 }

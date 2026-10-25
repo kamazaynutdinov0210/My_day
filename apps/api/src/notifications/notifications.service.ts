@@ -22,7 +22,6 @@ export class NotificationsService {
     const existing = await this.prisma.notification.findFirst({ where: { id, userId }, select: { id: true } });
     if (!existing) throw new NotFoundException('Notification not found');
     const notification = await this.prisma.notification.update({ where: { id }, data: { read } });
-    await this.activity.create({ userId, action: read ? 'Notification read' : 'Notification unread', entityType: 'Notification', entityId: id });
     return notification;
   }
 

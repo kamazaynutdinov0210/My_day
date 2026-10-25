@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { ActivityAction, EntityType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -7,10 +8,10 @@ export class ActivityService {
 
   create(input: {
     userId: string;
-    action: string;
-    entityType?: string;
-    entityId?: string;
-    metadata?: Record<string, unknown>;
+    action: ActivityAction;
+    entityType: EntityType;
+    entityId: string;
+    metadata?: Prisma.InputJsonObject;
   }) {
     return this.prisma.activityLog.create({
       data: {

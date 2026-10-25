@@ -41,11 +41,12 @@ export class CalendarService {
         category: dto.category,
         priority: dto.priority,
         status: dto.status,
-        recurrence: dto.recurrence,
+        recurrenceFreq: dto.recurrenceFreq,
+        recurrenceRule: dto.recurrenceRule,
         projectId: dto.projectId,
       },
     });
-    await this.activity.create({ userId, action: 'Event created', entityType: 'CalendarEvent', entityId: event.id });
+    await this.activity.create({ userId, action: 'EVENT_CREATED', entityType: 'EVENT', entityId: event.id });
     return event;
   }
 
@@ -67,14 +68,15 @@ export class CalendarService {
         ...(dto.category !== undefined ? { category: dto.category } : {}),
         ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
         ...(dto.status !== undefined ? { status: dto.status } : {}),
-        ...(dto.recurrence !== undefined ? { recurrence: dto.recurrence } : {}),
+        ...(dto.recurrenceFreq !== undefined ? { recurrenceFreq: dto.recurrenceFreq } : {}),
+        ...(dto.recurrenceRule !== undefined ? { recurrenceRule: dto.recurrenceRule } : {}),
         ...(dto.projectId !== undefined ? { projectId: dto.projectId } : {}),
       },
     });
     await this.activity.create({
       userId,
-      action: startAt.getTime() !== current.startAt.getTime() || endAt.getTime() !== current.endAt.getTime() ? 'Event moved' : 'Event updated',
-      entityType: 'CalendarEvent',
+      action: startAt.getTime() !== current.startAt.getTime() || endAt.getTime() !== current.endAt.getTime() ? 'EVENT_MOVED' : 'EVENT_UPDATED',
+      entityType: 'EVENT',
       entityId: id,
     });
     return event;
@@ -83,7 +85,7 @@ export class CalendarService {
   async remove(userId: string, id: string) {
     await this.get(userId, id);
     await this.prisma.calendarEvent.delete({ where: { id } });
-    await this.activity.create({ userId, action: 'Event deleted', entityType: 'CalendarEvent', entityId: id });
+    await this.activity.create({ userId, action: 'EVENT_DELETED', entityType: 'EVENT', entityId: id });
     return { deleted: true };
   }
 }

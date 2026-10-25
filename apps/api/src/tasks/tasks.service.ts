@@ -43,11 +43,12 @@ export class TasksService {
         estimatedDuration: dto.estimatedDuration,
         projectId: dto.projectId,
         parentTaskId: dto.parentTaskId,
-        recurrence: dto.recurrence,
+        recurrenceFreq: dto.recurrenceFreq,
+        recurrenceRule: dto.recurrenceRule,
       },
     });
 
-    await this.activity.create({ userId, action: 'Task created', entityType: 'Task', entityId: task.id });
+    await this.activity.create({ userId, action: 'TASK_CREATED', entityType: 'TASK', entityId: task.id });
     return task;
   }
 
@@ -80,15 +81,16 @@ export class TasksService {
         ...(dto.actualDuration !== undefined ? { actualDuration: dto.actualDuration } : {}),
         ...(dto.projectId !== undefined ? { projectId: dto.projectId } : {}),
         ...(dto.parentTaskId !== undefined ? { parentTaskId: dto.parentTaskId } : {}),
-        ...(dto.recurrence !== undefined ? { recurrence: dto.recurrence } : {}),
+        ...(dto.recurrenceFreq !== undefined ? { recurrenceFreq: dto.recurrenceFreq } : {}),
+        ...(dto.recurrenceRule !== undefined ? { recurrenceRule: dto.recurrenceRule } : {}),
         completedAt,
       },
     });
 
     await this.activity.create({
       userId,
-      action: task.status === 'COMPLETED' && current.status !== 'COMPLETED' ? 'Task completed' : 'Task updated',
-      entityType: 'Task',
+      action: task.status === 'COMPLETED' && current.status !== 'COMPLETED' ? 'TASK_COMPLETED' : 'TASK_UPDATED',
+      entityType: 'TASK',
       entityId: task.id,
     });
     return task;
@@ -97,7 +99,7 @@ export class TasksService {
   async remove(userId: string, id: string) {
     await this.get(userId, id);
     await this.prisma.task.delete({ where: { id } });
-    await this.activity.create({ userId, action: 'Task deleted', entityType: 'Task', entityId: id });
+    await this.activity.create({ userId, action: 'TASK_DELETED', entityType: 'TASK', entityId: id });
     return { deleted: true };
   }
 

@@ -21,7 +21,7 @@ describe('TasksService', () => {
       where: { id: 'task-1' },
       data: expect.objectContaining({ status: 'COMPLETED', completedAt: expect.any(Date) }),
     }));
-    expect(activity.create).toHaveBeenCalledWith(expect.objectContaining({ action: 'Task completed' }));
+    expect(activity.create).toHaveBeenCalledWith(expect.objectContaining({ action: 'TASK_COMPLETED' }));
   });
 
   it('rejects self-parenting', async () => {
