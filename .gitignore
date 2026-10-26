@@ -11,3 +11,5 @@ coverage/
 prisma/migrations/dev.db
 
 *.tsbuildinfo
+
+apps/web/next-env.d.ts
