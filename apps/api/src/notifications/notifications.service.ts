@@ -8,25 +8,34 @@ export class NotificationsService {
   constructor(private readonly prisma: PrismaService, private readonly activity: ActivityService) {}
 
   async list(userId: string, query: ListNotificationsQuery) {
-    const where = { userId, ...(query.read !== undefined ? { read: query.read === 'true' } : {}) };
+    const where = {
+      userId,
+      ...(query.read !== undefined ? { read: query.read === 'true' } : {}),
+      ...(query.type?.length ? { type: { in: query.type } } : {}),
+    };
     const skip = (query.page - 1) * query.pageSize;
-    const [items, total, unread] = await this.prisma.$transaction([
+    const [items, total] = await this.prisma.$transaction([
       this.prisma.notification.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: query.pageSize }),
       this.prisma.notification.count({ where }),
-      this.prisma.notification.count({ where: { userId, read: false } }),
     ]);
-    return { items, page: query.page, pageSize: query.pageSize, total, unread };
+    return { items, page: query.page, pageSize: query.pageSize, total };
   }
 
-  async markRead(userId: string, id: string, read = true) {
+  async unreadCount(userId: string) {
+    return { count: await this.prisma.notification.count({ where: { userId, read: false } }) };
+  }
+
+  async markRead(userId: string, id: string) {
     const existing = await this.prisma.notification.findFirst({ where: { id, userId }, select: { id: true } });
     if (!existing) throw new NotFoundException('Notification not found');
-    const notification = await this.prisma.notification.update({ where: { id }, data: { read } });
-    return notification;
+    return this.prisma.notification.update({ where: { id }, data: { read: true, readAt: new Date() } });
   }
 
   async markAllRead(userId: string) {
-    const result = await this.prisma.notification.updateMany({ where: { userId, read: false }, data: { read: true } });
-    return { updated: result.count };
+    await this.prisma.notification.updateMany({
+      where: { userId, read: false },
+      data: { read: true, readAt: new Date() },
+    });
+    return null;
   }
 }

@@ -1,21 +1,56 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { DEFAULT_PAGE_SIZE } from '../common/api-response';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityService } from '../activity/activity.service';
 import type { CreateTaskDto } from './dto/create-task.dto';
+import type { ListTasksQuery } from './dto/list-tasks.query';
 import type { UpdateTaskDto } from './dto/update-task.dto';
 
 @Injectable()
 export class TasksService {
   constructor(private readonly prisma: PrismaService, private readonly activity: ActivityService) {}
 
-  async list(userId: string, page = 1, pageSize = DEFAULT_PAGE_SIZE) {
+  async list(userId: string, query: Partial<ListTasksQuery> = {}) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
+    const where = this.buildWhere(userId, query);
     const skip = (page - 1) * pageSize;
     const [items, total] = await this.prisma.$transaction([
-      this.prisma.task.findMany({ where: { userId }, orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }], skip, take: pageSize }),
-      this.prisma.task.count({ where: { userId } }),
+      this.prisma.task.findMany({ where, orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }], skip, take: pageSize }),
+      this.prisma.task.count({ where }),
     ]);
     return { items, page, pageSize, total };
+  }
+
+  /** Marks a task completed (POST /tasks/:id/complete). Reuses update() so completedAt and the activity log stay consistent. */
+  complete(userId: string, id: string) {
+    return this.update(userId, id, { status: 'COMPLETED' });
+  }
+
+  buildWhere(userId: string, q: Partial<ListTasksQuery>): Prisma.TaskWhereInput {
+    const due = {
+      ...(q.dueBefore ? { lt: new Date(q.dueBefore) } : {}),
+      ...(q.dueAfter ? { gt: new Date(q.dueAfter) } : {}),
+    };
+    return {
+      userId,
+      ...(q.status?.length ? { status: { in: q.status } } : {}),
+      ...(q.priority?.length ? { priority: { in: q.priority } } : {}),
+      ...(q.projectId ? { projectId: q.projectId } : {}),
+      ...(q.parentTaskId ? { parentTaskId: q.parentTaskId } : {}),
+      ...(q.tagIds?.length ? { tags: { some: { tagId: { in: q.tagIds } } } } : {}),
+      // A comparison on dueDate never matches tasks without a due date, so they are never "overdue".
+      ...(Object.keys(due).length ? { dueDate: due } : {}),
+      ...(q.search
+        ? {
+            OR: [
+              { title: { contains: q.search, mode: 'insensitive' as const } },
+              { description: { contains: q.search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
   }
 
   async get(userId: string, id: string) {

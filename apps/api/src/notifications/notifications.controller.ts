@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { paginated } from '../common/api-response';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedRequest } from '../common/decorators/current-user.decorator';
@@ -18,10 +18,16 @@ export class NotificationsController {
     return paginated(result.items, result.page, result.pageSize, result.total);
   }
 
-  @Patch(':id/read')
+  // Declared before ':id' routes so "unread-count" is never captured as an id.
+  @Get('unread-count')
+  async unreadCount(@CurrentUser() user: AuthenticatedRequest['user']) {
+    return { success: true, data: await this.notifications.unreadCount(user.id) };
+  }
+
+  @Post(':id/read')
   @UseGuards(CsrfGuard)
-  async read(@CurrentUser() user: AuthenticatedRequest['user'], @Param('id') id: string, @Body('read') read = true) {
-    return { success: true, data: await this.notifications.markRead(user.id, id, read) };
+  async read(@CurrentUser() user: AuthenticatedRequest['user'], @Param('id') id: string) {
+    return { success: true, data: await this.notifications.markRead(user.id, id) };
   }
 
   @Post('read-all')

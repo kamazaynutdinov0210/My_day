@@ -1,10 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { paginated, parsePaging } from '../common/api-response';
+import { paginated } from '../common/api-response';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedRequest } from '../common/decorators/current-user.decorator';
 import { CsrfGuard } from '../common/guards/csrf.guard';
 import { SessionAuthGuard } from '../common/guards/session-auth.guard';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { ListTasksQuery } from './dto/list-tasks.query';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TasksService } from './tasks.service';
 
@@ -14,13 +15,8 @@ export class TasksController {
   constructor(private readonly tasks: TasksService) {}
 
   @Get()
-  async list(
-    @CurrentUser() user: AuthenticatedRequest['user'],
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
-  ) {
-    const paging = parsePaging(page, pageSize);
-    const result = await this.tasks.list(user.id, paging.page, paging.pageSize);
+  async list(@CurrentUser() user: AuthenticatedRequest['user'], @Query() query: ListTasksQuery) {
+    const result = await this.tasks.list(user.id, query);
     return paginated(result.items, result.page, result.pageSize, result.total);
   }
 
@@ -39,6 +35,12 @@ export class TasksController {
   @UseGuards(CsrfGuard)
   async update(@CurrentUser() user: AuthenticatedRequest['user'], @Param('id') id: string, @Body() dto: UpdateTaskDto) {
     return { success: true, data: await this.tasks.update(user.id, id, dto) };
+  }
+
+  @Post(':id/complete')
+  @UseGuards(CsrfGuard)
+  async complete(@CurrentUser() user: AuthenticatedRequest['user'], @Param('id') id: string) {
+    return { success: true, data: await this.tasks.complete(user.id, id) };
   }
 
   @Delete(':id')

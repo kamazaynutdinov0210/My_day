@@ -2,20 +2,27 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityService } from '../activity/activity.service';
 import type { CreateEventDto } from './dto/create-event.dto';
+import type { ListEventsQuery } from './dto/list-events.query';
 import type { UpdateEventDto } from './dto/update-event.dto';
 
 @Injectable()
 export class CalendarService {
   constructor(private readonly prisma: PrismaService, private readonly activity: ActivityService) {}
 
-  async list(userId: string, from?: string, to?: string) {
-    const startAt = from ? new Date(from) : new Date(Date.now() - 7 * 86_400_000);
-    const endAt = to ? new Date(to) : new Date(Date.now() + 30 * 86_400_000);
-    const events = await this.prisma.calendarEvent.findMany({
-      where: { userId, startAt: { lt: endAt }, endAt: { gt: startAt } },
+  /** Events overlapping [from, to). Returns the plain array the contract expects (not paginated). */
+  list(userId: string, query: Partial<ListEventsQuery> = {}) {
+    const startAt = query.from ? new Date(query.from) : new Date(Date.now() - 7 * 86_400_000);
+    const endAt = query.to ? new Date(query.to) : new Date(Date.now() + 30 * 86_400_000);
+    return this.prisma.calendarEvent.findMany({
+      where: {
+        userId,
+        startAt: { lt: endAt },
+        endAt: { gt: startAt },
+        ...(query.projectId ? { projectId: query.projectId } : {}),
+        ...(query.category?.length ? { category: { in: query.category } } : {}),
+      },
       orderBy: { startAt: 'asc' },
     });
-    return { items: events, from: startAt, to: endAt };
   }
 
   async get(userId: string, id: string) {

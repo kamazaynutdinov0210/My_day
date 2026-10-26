@@ -5,6 +5,7 @@ import { CsrfGuard } from '../common/guards/csrf.guard';
 import { SessionAuthGuard } from '../common/guards/session-auth.guard';
 import { CalendarService } from './calendar.service';
 import { CreateEventDto } from './dto/create-event.dto';
+import { ListEventsQuery } from './dto/list-events.query';
 import { UpdateEventDto } from './dto/update-event.dto';
 
 @Controller('calendar/events')
@@ -13,8 +14,8 @@ export class CalendarController {
   constructor(private readonly calendar: CalendarService) {}
 
   @Get()
-  async list(@CurrentUser() user: AuthenticatedRequest['user'], @Query('from') from?: string, @Query('to') to?: string) {
-    return { success: true, data: await this.calendar.list(user.id, from, to) };
+  async list(@CurrentUser() user: AuthenticatedRequest['user'], @Query() query: ListEventsQuery) {
+    return { success: true, data: await this.calendar.list(user.id, query) };
   }
 
   @Get(':id')
