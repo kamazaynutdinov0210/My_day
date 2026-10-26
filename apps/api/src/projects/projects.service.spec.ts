@@ -14,7 +14,10 @@ describe('ProjectsService', () => {
     };
     const service = new ProjectsService(prisma as never, { create: vi.fn() } as never);
 
-    const result = await (service as unknown as { withProgress: Function }).withProgress('project-1', { id: 'project-1', name: 'Demo' });
+    const withProgress = (service as unknown as {
+      withProgress: (id: string, project: { id: string; name: string }) => Promise<{ progress: number; taskStats: unknown }>;
+    }).withProgress.bind(service);
+    const result = await withProgress('project-1', { id: 'project-1', name: 'Demo' });
     expect(result.progress).toBe(37.5);
     expect(result.taskStats).toEqual({ total: 8, completed: 3 });
   });

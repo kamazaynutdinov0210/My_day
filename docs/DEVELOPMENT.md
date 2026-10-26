@@ -130,14 +130,27 @@ browser-only persistent reminders, primary storage in `localStorage`,
 frontend-exposed API keys, fake analytics, an external SDK embedded
 outside its owning module, or a silent change to API/database contracts.
 
-## 9. Known issue — Phase 1 environment
+## 9. Phase 1 environment note (resolved)
 
-`prisma validate`/`prisma generate` could not be executed in the sandbox
-used to produce this Phase 1 baseline: the Prisma CLI needs to download
-query-engine binaries from `binaries.prisma.sh`, which is not on that
-sandbox's network allowlist. `prisma/schema.prisma` was instead checked
-with a static script for duplicate model/enum names and for every
-`@relation(fields: [...])` referencing a field actually declared on the
-same model (all clean — see the Architect AI's Phase 1 report). Run
-`pnpm db:generate` / `npx prisma validate` in a normal dev environment
-before Phase 2 work begins, as a first sanity check.
+The Phase 1 baseline was produced in a sandbox that could not download Prisma's
+engines, so the schema was only checked statically at the time. That gap is closed:
+the schema has been validated and migrated against a real PostgreSQL, and CI now
+applies every migration to an empty database on each push (see below).
+
+## Quality checks (local and CI)
+
+The same commands run locally and in GitHub Actions (`.github/workflows/ci.yml`):
+
+```bash
+pnpm install          # also runs `prisma generate` via the root postinstall script
+pnpm lint             # ESLint: apps/api and apps/web
+pnpm typecheck        # tsc in every package
+pnpm test             # Vitest (apps/api)
+pnpm build            # nest build + next build
+```
+
+A second CI job starts an empty Postgres, applies every migration, and fails if
+`prisma/schema.prisma` contains changes that no migration covers. When you edit the
+schema, run `pnpm db:migrate` and commit the generated migration folder.
+
+`next build` downloads the Onest font from Google Fonts, so it needs internet access.
