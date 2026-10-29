@@ -12,7 +12,7 @@ import { useUi } from "@/stores/ui";
 // `ready: false` items are disabled until their screens exist — no dead links.
 const NAV = [
   { href: "/", label: "Мой день", ready: true },
-  { href: "/tasks", label: "Задачи", ready: false },
+  { href: "/tasks", label: "Задачи", ready: true },
   { href: "/projects", label: "Проекты", ready: false },
   { href: "/calendar", label: "Календарь", ready: false },
   { href: "/notes", label: "Заметки", ready: false },

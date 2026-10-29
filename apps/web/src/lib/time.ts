@@ -29,3 +29,31 @@ export function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60), m = minutes % 60;
   return h && m ? `${h} ч ${m} мин` : h ? `${h} ч` : `${m} мин`;
 }
+
+/** Offset (wall clock minus UTC) of `tz` at the given instant, in ms. */
+function tzOffsetMs(instantMs: number, tz: string): number {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(new Date(instantMs));
+  const g = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const wallAsUtc = Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute"), g("second"));
+  return wallAsUtc - Math.floor(instantMs / 1000) * 1000;
+}
+
+/** UTC instant of 23:59 on the calendar day `ymd` (YYYY-MM-DD) in `tz`. Used for date-only due dates. */
+export function endOfZonedDay(ymd: string, tz: string): string {
+  const wall = Date.parse(`${ymd}T23:59:00Z`);
+  // Two passes so a DST change between the guess and the real instant is still handled.
+  const first = wall - tzOffsetMs(wall, tz);
+  return new Date(wall - tzOffsetMs(first, tz)).toISOString();
+}
+
+/** Calendar day (YYYY-MM-DD) of an instant in `tz`. */
+export function zonedYmd(iso: string, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(iso));
+}
+
+export function formatDueDate(iso: string, tz: string, locale = "ru-RU"): string {
+  return new Intl.DateTimeFormat(locale, { timeZone: tz, day: "numeric", month: "short" }).format(new Date(iso));
+}

@@ -24,6 +24,44 @@ describe('TasksService', () => {
     expect(activity.create).toHaveBeenCalledWith(expect.objectContaining({ action: 'TASK_COMPLETED' }));
   });
 
+  it('clears completedAt when a completed task is reopened', async () => {
+    const completedAt = new Date('2026-10-20T10:00:00Z');
+    const current = { id: 'task-1', userId: 'user-1', status: 'COMPLETED', completedAt };
+    const prisma = {
+      task: {
+        findFirst: vi.fn().mockResolvedValue(current),
+        update: vi.fn().mockResolvedValue({ ...current, status: 'TODO', completedAt: null }),
+      },
+      project: { findFirst: vi.fn() },
+    };
+    const activity = { create: vi.fn().mockResolvedValue(undefined) };
+    const service = new TasksService(prisma as never, activity as never);
+
+    await service.update('user-1', 'task-1', { status: 'TODO' });
+    expect(prisma.task.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'TODO', completedAt: null }),
+    }));
+    expect(activity.create).toHaveBeenCalledWith(expect.objectContaining({ action: 'TASK_UPDATED' }));
+  });
+
+  it('keeps the original completedAt when an already completed task is edited', async () => {
+    const completedAt = new Date('2026-10-20T10:00:00Z');
+    const current = { id: 'task-1', userId: 'user-1', status: 'COMPLETED', completedAt };
+    const prisma = {
+      task: {
+        findFirst: vi.fn().mockResolvedValue(current),
+        update: vi.fn().mockResolvedValue(current),
+      },
+      project: { findFirst: vi.fn() },
+    };
+    const service = new TasksService(prisma as never, { create: vi.fn() } as never);
+
+    await service.update('user-1', 'task-1', { title: 'Renamed' });
+    expect(prisma.task.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ completedAt }),
+    }));
+  });
+
   it('rejects self-parenting', async () => {
     const prisma = {
       task: { findFirst: vi.fn().mockResolvedValue({ id: 'task-1', userId: 'user-1', status: 'TODO', completedAt: null }) },

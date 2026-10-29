@@ -100,9 +100,9 @@ export class TasksService {
     const completedAt =
       dto.completedAt !== undefined
         ? (dto.completedAt ? new Date(dto.completedAt) : null)
-        : status === 'COMPLETED' && current.status !== 'COMPLETED'
-          ? new Date()
-          : current.completedAt;
+        : status === 'COMPLETED'
+          ? (current.status !== 'COMPLETED' ? new Date() : current.completedAt)
+          : null; // not completed (including reopened), so there is no completion time
 
     const task = await this.prisma.task.update({
       where: { id },
