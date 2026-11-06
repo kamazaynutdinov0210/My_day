@@ -32,6 +32,33 @@ export interface AuthRegisterInput {
   name: string;
 }
 
+export interface GoogleAuthInput {
+  credential?: string;
+  code?: string;
+  redirectUri?: string;
+  name?: string;
+  email?: string;
+  photoUrl?: string;
+}
+
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ResetPasswordInput {
+  token: string;
+  password: string;
+}
+
+export interface VerifyResetTokenResult {
+  valid: boolean;
+  email?: string;
+}
+
+export interface AuthMessageResult {
+  message: string;
+}
+
 /** Returned on successful login/register. Session token lives only in an
  * HTTP-only cookie — it is never present in this payload. */
 export interface AuthSessionResult {

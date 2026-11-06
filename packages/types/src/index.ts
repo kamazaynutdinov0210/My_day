@@ -17,4 +17,5 @@ export * from "./message.js";
 export * from "./briefing.js";
 export * from "./analytics.js";
 export * from "./ai.js";
+export * from "./crypto.js";
 export * from "./events.js";

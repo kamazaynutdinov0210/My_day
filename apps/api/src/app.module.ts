@@ -11,14 +11,18 @@ import { CalendarModule } from './calendar/calendar.module';
 import { NotesModule } from './notes/notes.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ActivityModule } from './activity/activity.module';
-
-@Module({
+import { CryptoModule } from './crypto/crypto.module';
+import { HealthModule } from './health/health.module';
+import { TagsModule } from './tags/tags.module';@Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
     PrismaModule,
     ActivityModule,
     AuthModule,
+    CryptoModule,
+    HealthModule,
+    TagsModule,
     UsersModule,
     TasksModule,
     ProjectsModule,

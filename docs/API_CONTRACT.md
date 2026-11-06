@@ -62,6 +62,10 @@ the brief). No endpoint accepts or returns a bearer token in the JSON body.
 ```
 POST   /api/auth/register        { AuthRegisterInput }        → AuthSessionResult
 POST   /api/auth/login           { AuthLoginInput }            → AuthSessionResult
+POST   /api/auth/google          { GoogleAuthInput }          → AuthSessionResult
+POST   /api/auth/forgot-password { ForgotPasswordInput }      → { success: true, message: string }
+POST   /api/auth/reset-password  { ResetPasswordInput }       → { success: true, message: string }
+GET    /api/auth/verify-reset-token ?token=string              → { success: true, valid: boolean }
 POST   /api/auth/logout          –                              → { success: true, data: null }
 GET    /api/auth/me              –                              → User
 ```
@@ -269,6 +273,21 @@ rate limiting (`RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX` in `.env.example`).
 Exceeding the limit returns `429` with `error.code = "RATE_LIMITED"`.
 
 ## 23. OpenAPI/Swagger
+
+## 24. Cryptography & Encryption History
+
+```
+GET    /api/crypto/algorithms                                         → EncryptionAlgorithmInfo[]
+POST   /api/crypto/encrypt        { EncryptInput }                    → EncryptResult
+POST   /api/crypto/decrypt        { DecryptInput }                    → DecryptResult
+POST   /api/crypto/hash           { HashInput }                       → HashResult
+POST   /api/crypto/generate-keypair { KeyPairInput }                  → KeyPairResult
+GET    /api/crypto/history        ?EncryptionHistoryFilterParams + pg → EncryptionHistoryItem[]
+GET    /api/crypto/history/:id                                        → EncryptionHistoryItem
+DELETE /api/crypto/history/:id                                        → { success: true, data: null }
+DELETE /api/crypto/history                                            → { success: true, count: number }
+```
+Security rule: `EncryptResult`, `DecryptResult`, and `HashResult` return processed data to the active caller only. Plaintext, passwords, encryption keys, and private keys are NEVER persisted to `EncryptionHistory` or server logs. Only operational metadata (algorithm, duration, payload size, timestamp, status) is stored.
 
 `apps/api` exposes live Swagger UI at `/api/docs` and a machine-readable
 spec at `/api/docs-json`, generated from NestJS decorators, kept in sync

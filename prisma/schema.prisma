@@ -196,6 +196,26 @@ enum EntityType {
   INTEGRATION
   MESSAGE
   EMAIL_MESSAGE
+  ENCRYPTION_OPERATION
+}
+
+enum EncryptionOperationType {
+  ENCRYPT
+  DECRYPT
+  HASH
+  KEYGEN
+}
+
+enum EncryptionCategory {
+  SYMMETRIC
+  ASYMMETRIC
+  HASHING
+  KEY_DERIVATION
+}
+
+enum EncryptionStatus {
+  SUCCESS
+  FAILED
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -215,6 +235,9 @@ model User {
   updatedAt      DateTime @updatedAt
 
   sessions             Session[]
+  passwordResetTokens  PasswordResetToken[]
+  oauthAccounts        OAuthAccount[]
+  encryptionHistories  EncryptionHistory[]
   tasks                Task[]
   projects             Project[]
   projectMemberships   ProjectMember[]
@@ -248,6 +271,52 @@ model Session {
 
   @@index([userId])
   @@map("sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model OAuthAccount {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider       String   // "google"
+  providerUserId String
+  email          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+model EncryptionHistory {
+  id            String                  @id @default(cuid())
+  userId        String
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  operationType EncryptionOperationType
+  algorithm     String                  // "AES-256-GCM", "ChaCha20-Poly1305", "RSA-OAEP", "SHA-256", etc.
+  category      EncryptionCategory
+  dataType      String                  @default("TEXT") // "TEXT", "FILE", "JSON", "KEY"
+  status        EncryptionStatus        @default(SUCCESS)
+  metadata      Json?                   // non-sensitive operational metadata
+  createdAt     DateTime                @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, algorithm])
+  @@index([userId, operationType])
+  @@map("encryption_histories")
 }
 
 // ─────────────────────────────────────────────────────────────────────────

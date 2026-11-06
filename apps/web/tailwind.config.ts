@@ -9,8 +9,7 @@ const config: Config = {
       colors: {
         bg: c("bg"), surface: c("surface"), raised: c("raised"), line: c("line"),
         fg: c("fg"), muted: c("muted"), accent: c("accent"), "accent-fg": c("accent-fg"),
-        good: c("good"), bad: c("bad"),
-      },
+        good: c("good"), bad: c("bad"), warn: c("warn"),      },
       fontFamily: { sans: ["var(--font-sans)", "system-ui", "sans-serif"] },
     },
   },

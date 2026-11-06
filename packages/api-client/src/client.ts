@@ -5,12 +5,16 @@ import type {
   CalendarEvent, CalendarEventFilterParams, ConnectIntegrationInput,
   CreateCalendarEventInput, CreateNoteInput, CreateProjectInput, CreateReminderInput,
   CreateTagInput, CreateTaskInput, CreateTimeEntryInput, DailyBriefing,
-  DailyBriefingGenerateRequest, EmailFilterParams, EmailMessage, EntityId,
-  IntegrationAccount, IntegrationCatalogEntry, Message, MessageFilterParams, Note,
+  DailyBriefingGenerateRequest, DecryptInput, DecryptResult, EmailFilterParams, EmailMessage,
+  EncryptInput, EncryptionAlgorithmInfo, EncryptionHistoryFilterParams,
+  EncryptionHistoryItem, EncryptResult, EntityId, ForgotPasswordInput,
+  GoogleAuthInput, HashInput, HashResult, IntegrationAccount, IntegrationCatalogEntry,
+  KeyPairInput, KeyPairResult, Message, MessageFilterParams, Note,
   NoteFilterParams, Notification, NotificationFilterParams, PaginationParams, Project,
-  ProjectFilterParams, Reminder, ReminderStatus, Tag, Task, TaskComment, TaskFilterParams,
-  TimeEntry, UpdateCalendarEventInput, UpdateNoteInput, UpdateProjectInput,
-  UpdateReminderInput, UpdateTaskInput, UpdateUserSettingsInput, User,
+  ProjectFilterParams, Reminder, ReminderStatus, ResetPasswordInput, Tag, Task,
+  TaskComment, TaskFilterParams, TimeEntry, UpdateCalendarEventInput, UpdateNoteInput,
+  UpdateProjectInput, UpdateReminderInput, UpdateTaskInput, UpdateUserSettingsInput,
+  User, VerifyResetTokenResult,
 } from "@my-day/types";
 import { createHttp, type HttpOptions, type Page } from "./http.js";
 import type { HealthStatus, SearchResults, UnreadCount } from "./types.js";
@@ -45,8 +49,26 @@ export function createApiClient(options: HttpOptions = {}) {
     auth: {
       register: (i: AuthRegisterInput) => send<AuthSessionResult>("POST", "/auth/register", i),
       login: (i: AuthLoginInput) => send<AuthSessionResult>("POST", "/auth/login", i),
+      google: (i: GoogleAuthInput) => send<AuthSessionResult>("POST", "/auth/google", i),
+      forgotPassword: (i: ForgotPasswordInput) => send<{ message: string }>("POST", "/auth/forgot-password", i),
+      resetPassword: (i: ResetPasswordInput) => send<{ message: string }>("POST", "/auth/reset-password", i),
+      verifyResetToken: (token: string) => get<VerifyResetTokenResult>("/auth/verify-reset-token", { token }),
       logout: () => send<null>("POST", "/auth/logout"),
       me: () => get<User>("/auth/me"),
+    },
+    crypto: {
+      algorithms: () => get<EncryptionAlgorithmInfo[]>("/crypto/algorithms"),
+      encrypt: (i: EncryptInput) => send<EncryptResult>("POST", "/crypto/encrypt", i),
+      decrypt: (i: DecryptInput) => send<DecryptResult>("POST", "/crypto/decrypt", i),
+      hash: (i: HashInput) => send<HashResult>("POST", "/crypto/hash", i),
+      generateKeyPair: (i: KeyPairInput) => send<KeyPairResult>("POST", "/crypto/generate-keypair", i),
+      history: {
+        list: (q?: Paged<EncryptionHistoryFilterParams>) => list<EncryptionHistoryItem>("/crypto/history", q),
+        get: (id: EntityId) => get<EncryptionHistoryItem>(`/crypto/history/${id}`),
+        create: (i: Partial<EncryptionHistoryItem>) => send<EncryptionHistoryItem>("POST", "/crypto/history", i),
+        remove: (id: EntityId) => send<null>("DELETE", `/crypto/history/${id}`),
+        clear: () => send<{ count: number }>("DELETE", "/crypto/history"),
+      },
     },
     users: {
       me: () => get<User>("/users/me"),

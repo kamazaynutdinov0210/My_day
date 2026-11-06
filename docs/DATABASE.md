@@ -1,4 +1,4 @@
-﻿# Database
+# Database
 
 Status: **Phase 1 baseline**. The executable source of truth is
 `prisma/schema.prisma`; this document explains and indexes it. If the two
@@ -17,6 +17,9 @@ Prisma's `$queryRaw` with parameterized input.
 ```
 User
  ├── Session[]
+ ├── PasswordResetToken[]
+ ├── OAuthAccount[]
+ ├── EncryptionHistory[]
  ├── Task[] ───────────────┐
  ├── Project[] (owner) ────┤
  ├── ProjectMember[]       │
@@ -58,17 +61,27 @@ Integration (catalog, one row per provider)
 
 ## 3. Entities (§9 of the brief)
 
-`User`, `Session`, `Task`, `TaskComment`, `Project`, `ProjectMember`,
-`CalendarEvent`, `Reminder`, `Notification`, `Note`, `Tag`, `TaskTag`,
-`ProjectTag`, `ActivityLog`, `Integration`, `IntegrationAccount`,
-`Message`, `EmailMessage`, `DailyBriefing`, `TimeEntry`,
-`AnalyticsSnapshot` — all defined in `prisma/schema.prisma`. 21 models
+`User`, `Session`, `PasswordResetToken`, `OAuthAccount`, `EncryptionHistory`,
+`Task`, `TaskComment`, `Project`, `ProjectMember`, `CalendarEvent`, `Reminder`,
+`Notification`, `Note`, `Tag`, `TaskTag`, `ProjectTag`, `ActivityLog`,
+`Integration`, `IntegrationAccount`, `Message`, `EmailMessage`, `DailyBriefing`,
+`TimeEntry`, `AnalyticsSnapshot` — all defined in `prisma/schema.prisma`. 24 models
 total; see that file for exact fields, types, and indexes.
 
 ## 4. Notable design decisions
 
 - **IDs**: `cuid()` everywhere, not auto-increment integers, so IDs are
   safely generated client- or server-side and don't leak row counts.
+- **Password reset & tokens**: Password recovery tokens are stored only as
+  SHA-256 hashes (`PasswordResetToken.tokenHash`). Raw tokens are never stored
+  or logged. Single-use and time-limited. Resetting a password immediately
+  revokes all existing sessions.
+- **Encryption History**: Persisted in PostgreSQL per user. Never stores
+  plaintext, decrypted output, encryption keys, or private key material.
+  Only metadata (algorithm, operation type, duration, byte size) is stored.
+- **OAuth Accounts**: Stored in `OAuthAccount` linked to the user account,
+  enabling passwordless Google authentication while keeping account ownership
+  coherent and isolated.
 - **Soft vs. hard delete**: MVP uses hard delete with `onDelete: Cascade`
   on ownership edges (e.g. deleting a `User` cascades their data) and
   `onDelete: SetNull` where a relation is optional context (e.g. deleting
