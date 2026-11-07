@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import { Throttle } from '@nestjs/throttler';import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -21,6 +21,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
     return this.authService.login(dto, response);
   }
@@ -31,6 +32,7 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
   }
