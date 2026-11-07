@@ -37,6 +37,7 @@ export class AuthService {
     });
 
     await this.issueSession(user.id, response);
+    await this.requestEmailVerification(user.id, user.email);
     return { success: true, data: { user } };
   }
 
@@ -229,6 +230,49 @@ export class AuthService {
       success: true,
       message: 'Your password has been successfully updated. Please log in with your new password.',
     };
+  }
+
+  async verifyEmail(token: string) {
+    if (!token || typeof token !== 'string') {
+      throw new BadRequestException('Verification token is required');
+    }
+    const tokenHash = this.hashToken(token.trim());
+    const record = await this.prisma.emailVerificationToken.findFirst({
+      where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } },
+    });
+    if (!record) {
+      throw new BadRequestException('Email verification token is invalid or expired');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: record.userId }, data: { emailVerified: true } }),
+      this.prisma.emailVerificationToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+    ]);
+
+    return { success: true, message: 'Email verified successfully' };
+  }
+
+  async requestEmailVerification(userId: string, email: string) {
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.prisma.emailVerificationToken.create({
+      data: { userId, tokenHash, expiresAt },
+    });
+
+    const verifyUrl = `${process.env.APP_URL || 'http://localhost:3000'}/verify-email?token=${rawToken}`;
+    await this.mailService?.sendEmailVerification(email, verifyUrl);
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`[EMAIL VERIFICATION] Verification email queued for ${email} (token not logged)`);
+    }
+  }
+
+  async resendEmailVerification(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    await this.requestEmailVerification(user.id, user.email);
+    return { success: true, message: 'Verification email sent' };
   }
 
   async logout(sessionToken: string | undefined, response: Response) {

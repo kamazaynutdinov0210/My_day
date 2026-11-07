@@ -231,12 +231,14 @@ model User {
   timezone       String   @default("Asia/Tashkent")
   locale         String   @default("en")
   themePreference String  @default("dark") // "dark" | "light" | "system"
+  emailVerified  Boolean @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   sessions             Session[]
-  passwordResetTokens  PasswordResetToken[]
-  oauthAccounts        OAuthAccount[]
+  passwordResetTokens      PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  oauthAccounts            OAuthAccount[]
   encryptionHistories  EncryptionHistory[]
   tasks                Task[]
   projects             Project[]
@@ -284,6 +286,19 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("email_verification_tokens")
 }
 
 model OAuthAccount {

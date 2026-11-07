@@ -45,6 +45,17 @@ export class AuthController {
     return this.authService.resetPassword(dto);
   }
 
+  @Get('verify-email')
+  verifyEmail(@Query('token') token: string) {
+    return this.authService.verifyEmail(token);
+  }
+
+  @Post('resend-verification')
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  resendVerification(@CurrentUser() user: AuthenticatedRequest['user']) {
+    return this.authService.resendEmailVerification(user.id);
+  }
+
   @Post('logout')
   @UseGuards(CsrfGuard)
   logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {

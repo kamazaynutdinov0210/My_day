@@ -53,7 +53,8 @@ export function createApiClient(options: HttpOptions = {}) {
       forgotPassword: (i: ForgotPasswordInput) => send<{ message: string }>("POST", "/auth/forgot-password", i),
       resetPassword: (i: ResetPasswordInput) => send<{ message: string }>("POST", "/auth/reset-password", i),
       verifyResetToken: (token: string) => get<VerifyResetTokenResult>("/auth/verify-reset-token", { token }),
-      logout: () => send<null>("POST", "/auth/logout"),
+      verifyEmail: (token: string) => get<{ message: string }>("/auth/verify-email", { token }),
+      resendVerification: () => send<{ message: string }>("POST", "/auth/resend-verification"),      logout: () => send<null>("POST", "/auth/logout"),
       me: () => get<User>("/auth/me"),
     },
     crypto: {
