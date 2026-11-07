@@ -15,9 +15,10 @@ const NAV = [
     items: [
       { href: "/", label: "My Day", icon: "☀️", ready: true },
       { href: "/tasks", label: "Tasks", icon: "✓", ready: true },
-      { href: "/projects", label: "Projects", icon: "◈", ready: false },
-      { href: "/calendar", label: "Calendar", icon: "▦", ready: false },
-      { href: "/notes", label: "Notes", icon: "✎", ready: false },
+      { href: "/projects", label: "Projects", icon: "◈", ready: true },
+      { href: "/calendar", label: "Calendar", icon: "▦", ready: true },
+      { href: "/notes", label: "Notes", icon: "✎", ready: true },
+      { href: "/reminders", label: "Reminders", icon: "⏰", ready: true },
     ],
   },
   {
@@ -31,9 +32,10 @@ const NAV = [
   {
     section: "Insights",
     items: [
-      { href: "/notifications", label: "Notifications", icon: "◎", ready: false },
-      { href: "/analytics", label: "Analytics", icon: "▲", ready: false },
-      { href: "/integrations", label: "Integrations", icon: "⌁", ready: false },
+      { href: "/notifications", label: "Notifications", icon: "◎", ready: true },
+      { href: "/analytics", label: "Analytics", icon: "▲", ready: true },
+      { href: "/integrations", label: "Integrations", icon: "⌁", ready: true },
+      { href: "/ai", label: "AI Assistant", icon: "✦", ready: true },
     ],
   },
 ];
