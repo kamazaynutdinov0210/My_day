@@ -59,20 +59,37 @@ export class AuthService {
     let googleSub = dto.credential || dto.code || randomBytes(16).toString('hex');
     let avatarUrl = dto.photoUrl;
 
-    // Decode Google ID Token (JWT) if credential is provided
+    // Verify/decode Google ID Token (JWT) if credential is provided.
     if (dto.credential) {
+      let verified = false;
       try {
-        const parts = dto.credential.split('.');
-        if (parts.length === 3) {
-          const payloadJson = Buffer.from(parts[1]!, 'base64url').toString('utf8');
-          const payload = JSON.parse(payloadJson);
+        const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(dto.credential)}`);
+        if (res.ok) {
+          const payload = await res.json() as Record<string, unknown>;
           if (payload.email) email = String(payload.email).trim().toLowerCase();
           if (payload.name) name = String(payload.name).trim();
           if (payload.sub) googleSub = String(payload.sub);
           if (payload.picture) avatarUrl = String(payload.picture);
+          verified = true;
         }
-      } catch (e) {
-        this.logger.warn(`Failed to parse Google credential token: ${e instanceof Error ? e.message : e}`);
+      } catch {
+        verified = false;
+      }
+
+      if (!verified) {
+        try {
+          const parts = dto.credential.split('.');
+          if (parts.length === 3) {
+            const payloadJson = Buffer.from(parts[1]!, 'base64url').toString('utf8');
+            const payload = JSON.parse(payloadJson);
+            if (payload.email) email = String(payload.email).trim().toLowerCase();
+            if (payload.name) name = String(payload.name).trim();
+            if (payload.sub) googleSub = String(payload.sub);
+            if (payload.picture) avatarUrl = String(payload.picture);
+          }
+        } catch (e) {
+          this.logger.warn(`Failed to parse Google credential token: ${e instanceof Error ? e.message : e}`);
+        }
       }
     }
 
