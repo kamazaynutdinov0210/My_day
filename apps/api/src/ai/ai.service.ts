@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TasksService } from '../tasks/tasks.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { RemindersService } from '../reminders/reminders.service';
+import { AiProviderService } from './ai-provider.service';
 import type { AIChatRequest, AIChatResponse, AIConfirmActionRequest, AIResponse, AISummarizeRequest, AIProposedAction } from '@my-day/types';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class AiService {
     private readonly tasks: TasksService,
     private readonly calendar: CalendarService,
     private readonly reminders: RemindersService,
+    private readonly provider: AiProviderService,
   ) {}
 
   async chat(userId: string, input: AIChatRequest): Promise<AIChatResponse> {
@@ -76,7 +78,15 @@ export class AiService {
       const email = await this.prisma.emailMessage.findFirst({ where: { id: input.entityId, userId } });
       text = email?.bodyPreview ?? '';
     }
-    const summary = text.length > 300 ? `${text.slice(0, 300)}…` : text;
-    return { text: summary || 'No content to summarize.', provider: 'template', model: 'rule-based' };
+    const response = await this.provider.generateText({
+      prompt: `Summarize the following ${input.entityType} in 3 sentences: ${text}`,
+      maxTokens: 256,
+    });
+    return {
+      text: response.text || (text.length > 300 ? `${text.slice(0, 300)}…` : text) || 'No content to summarize.',
+      provider: response.provider,
+      model: response.model,
+      usage: response.usage,
+    };
   }
 }
