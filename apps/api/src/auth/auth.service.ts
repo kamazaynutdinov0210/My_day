@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { PUBLIC_USER_SELECT } from '../users/public-user';
+import type { MailService } from '../mail/mail.service';import { PUBLIC_USER_SELECT } from '../users/public-user';
 import * as argon2 from 'argon2';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Response } from 'express';
@@ -19,8 +19,7 @@ const DEFAULT_TIMEZONE = 'Asia/Tashkent';
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
-
+  constructor(private readonly prisma: PrismaService, private readonly mailService?: MailService) {}
   async register(dto: RegisterDto, response: Response) {
     const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -156,12 +155,10 @@ export class AuthService {
       });
 
       const resetUrl = `${process.env.APP_URL || 'http://localhost:3000'}/reset-password?token=${rawToken}`;
-      // Never log the recovery token. In development, the link is delivered via the
-      // configured email transport (or printed to the server console without the token).
+      await this.mailService?.sendPasswordReset(email, resetUrl);
       if (process.env.NODE_ENV !== 'production') {
         this.logger.log(`[PASSWORD RESET] Recovery email queued for ${email} (token not logged)`);
       }
-      void resetUrl;
     }
 
     return {

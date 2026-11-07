@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn } from "@my-day/ui";
+import { Button } from "@my-day/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "@/lib/api";
