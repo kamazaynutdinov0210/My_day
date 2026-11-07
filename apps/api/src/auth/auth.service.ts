@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import type { MailService } from '../mail/mail.service';import { PUBLIC_USER_SELECT } from '../users/public-user';
+import { MailService } from '../mail/mail.service';
+import { PUBLIC_USER_SELECT } from '../users/public-user';
 import * as argon2 from 'argon2';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Response } from 'express';

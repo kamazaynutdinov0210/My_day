@@ -3,5 +3,5 @@ import { AuthModule } from '../auth/auth.module';
 import { CalendarController } from './calendar.controller';
 import { CalendarService } from './calendar.service';
 
-@Module({ imports: [AuthModule], controllers: [CalendarController], providers: [CalendarService] })
+@Module({ imports: [AuthModule], controllers: [CalendarController], providers: [CalendarService], exports: [CalendarService] })
 export class CalendarModule {}
