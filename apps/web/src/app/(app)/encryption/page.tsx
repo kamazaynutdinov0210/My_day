@@ -5,7 +5,7 @@ import { Button, cn } from "@my-day/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { api } from "@/lib/api";
-
+import PasswordGenerator from "../password-generator/page";
 /* ─── Tooltip ────────────────────────────────────────── */
 function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -182,13 +182,14 @@ function OutputBox({ label, value }: { label: string; value: string }) {
 }
 
 /* ─── Tabs ───────────────────────────────────────────── */
-type Tab = "encrypt" | "decrypt" | "hash" | "keygen";
+type Tab = "encrypt" | "decrypt" | "hash" | "keygen" | "passwords";
 
 const TABS: { id: Tab; label: string; help: string }[] = [
   { id: "encrypt", label: "Encrypt", help: "Transform plaintext into ciphertext using a secret key. Only someone with the key can decrypt it." },
   { id: "decrypt", label: "Decrypt", help: "Reverse encryption to recover the original plaintext using the same key (symmetric) or private key (asymmetric)." },
   { id: "hash", label: "Hash", help: "Produce a fixed-length digest from input data. Hashing is one-way — it cannot be reversed to recover the original data." },
   { id: "keygen", label: "Key Generation", help: "Generate a public/private key pair for asymmetric encryption algorithms such as RSA-OAEP or ECC." },
+  { id: "passwords", label: "Password Manager", help: "Generate strong passwords and passphrases with configurable options and strength analysis." },
 ];
 
 /* ─── Main page ───────────────────────────────────────── */
@@ -282,7 +283,7 @@ export default function EncryptionPage() {
         {/* Main panel */}
         <div className="space-y-5">
           {/* Algorithm selector */}
-          {tab !== "keygen" && (
+          {tab !== "keygen" && tab !== "passwords" && (
             <div className="rounded-xl border border-line/50 bg-surface p-4 space-y-3">
               <div className="flex items-center gap-1">
                 <h2 className="text-sm font-semibold">Select Algorithm</h2>
@@ -537,9 +538,15 @@ export default function EncryptionPage() {
           </div>
         </div>
 
-        {/* Right panel: algo info */}
+        {tab === "passwords" && (
+  <div className="rounded-xl border border-line/50 bg-surface p-2">
+    <PasswordGenerator />
+  </div>
+)}
+
+{/* Right panel: algo info */}
         <div className="space-y-4">
-          {selectedAlgo && tab !== "keygen" && <AlgoInfo algo={selectedAlgo} />}
+          {selectedAlgo && tab !== "keygen" && tab !== "passwords" && <AlgoInfo algo={selectedAlgo} />}
 
           {/* Security tips */}
           <div className="rounded-xl border border-line/50 bg-surface p-4 space-y-2.5">
